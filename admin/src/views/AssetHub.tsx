@@ -33,6 +33,16 @@ export const AssetHub: React.FC = () => {
     const [isAddAssetOpen, setIsAddAssetOpen] = useState(false);
     const [isDividendOpen, setIsDividendOpen] = useState(false);
 
+    // Edit Mode States
+    const [isEditMode, setIsEditMode] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [editForm, setEditForm] = useState({
+        name: '',
+        type: '',
+        value: 0,
+        equity: 0
+    });
+
     // New Asset Form
     const [newAsset, setNewAsset] = useState<Partial<Asset>>({ type: 'Stock', value: 0, equity: 0 });
 
@@ -91,6 +101,55 @@ export const AssetHub: React.FC = () => {
         } catch (error) {
             console.error('Failed to create asset:', error);
             alert('Failed to create asset. Please try again.');
+        }
+    };
+
+    const handleUpdateAsset = async () => {
+        if (!selectedAsset || !editForm.name || !editForm.value) return;
+
+        try {
+            await api.updateAsset(Number(selectedAsset.id), {
+                name: editForm.name,
+                type: editForm.type,
+                value: Number(editForm.value),
+                equity: Number(editForm.equity || editForm.value)
+            });
+
+            // Refresh assets list
+            const data = await api.getAssets();
+            setAssets(data);
+
+            // Update selected asset with new data
+            const updatedAsset = data.find((a: any) => a.id === selectedAsset.id);
+            if (updatedAsset) {
+                setSelectedAsset(updatedAsset);
+            }
+
+            setIsEditMode(false);
+            setShowDeleteConfirm(false);
+        } catch (error) {
+            console.error('Failed to update asset:', error);
+            alert('Failed to update asset. Please try again.');
+        }
+    };
+
+    const handleDeleteAsset = async () => {
+        if (!selectedAsset) return;
+
+        try {
+            await api.deleteAsset(Number(selectedAsset.id));
+
+            // Refresh assets list
+            const data = await api.getAssets();
+            setAssets(data);
+
+            // Close the panel
+            setSelectedAsset(null);
+            setIsEditMode(false);
+            setShowDeleteConfirm(false);
+        } catch (error) {
+            console.error('Failed to delete asset:', error);
+            alert('Failed to delete asset. Please try again.');
         }
     };
 
@@ -155,88 +214,192 @@ export const AssetHub: React.FC = () => {
                         <div className="flex justify-between items-center mb-8">
                             <h2 className="text-xl font-bold text-white flex items-center gap-2">
                                 {getAssetIcon(selectedAsset.type)}
-                                {selectedAsset.name}
+                                {isEditMode ? 'Edit Asset' : selectedAsset.name}
                             </h2>
-                            <button onClick={() => setSelectedAsset(null)} className="p-2 hover:bg-white/10 rounded-full text-gray-400 hover:text-white">
+                            <button onClick={() => { setSelectedAsset(null); setIsEditMode(false); }} className="p-2 hover:bg-white/10 rounded-full text-gray-400 hover:text-white">
                                 <X size={20} />
                             </button>
                         </div>
 
-                        <div className="mb-6 p-4 bg-white/5 rounded-xl border border-white/10">
-                            <div className="flex justify-between items-end mb-2">
-                                <div className="text-sm text-gray-500">Current Valuation</div>
-                                <div className="text-xs text-electric-green bg-electric-green/10 px-2 py-0.5 rounded">Live</div>
-                            </div>
-                            <div className="text-3xl font-mono text-white mb-1">${selectedAsset.value.toLocaleString()}</div>
-                            {selectedAsset.equity && (
-                                <div className="text-sm text-gray-400 flex justify-between">
-                                    <span>Equity Owned</span>
-                                    <span className="text-white">${selectedAsset.equity.toLocaleString()}</span>
+                        {/* Edit Mode Form */}
+                        {isEditMode ? (
+                            <div className="space-y-4 flex-1">
+                                <div>
+                                    <label className="text-xs text-gray-400 block mb-1">Asset Name</label>
+                                    <input
+                                        className="w-full bg-black/40 border border-grid-border rounded p-2 text-white focus:border-neon-purple outline-none"
+                                        value={editForm.name}
+                                        onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                                    />
                                 </div>
-                            )}
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3 mb-6">
-                            <button
-                                onClick={() => setIsDividendOpen(true)}
-                                className="bg-electric-green/10 text-electric-green hover:bg-electric-green hover:text-black py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
-                            >
-                                <DollarSign size={16} />
-                                Record Income
-                            </button>
-                            <button className="bg-white/5 text-gray-400 hover:bg-white/10 py-2 rounded-lg text-sm font-medium transition-colors">
-                                Edit Details
-                            </button>
-                        </div>
-
-                        <AnimatePresence>
-                            {isDividendOpen && (
-                                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden mb-6">
-                                    <div className="bg-neon-purple/10 border border-neon-purple/30 p-4 rounded-xl">
-                                        <h4 className="text-white text-sm font-medium mb-3">Record New Income</h4>
-                                        <div className="flex gap-2">
-                                            <input
-                                                type="number"
-                                                placeholder="0.00"
-                                                className="flex-1 bg-black/40 border border-grid-border rounded px-3 py-2 text-white outline-none focus:border-neon-purple"
-                                                value={dividendAmount}
-                                                onChange={e => setDividendAmount(e.target.value)}
-                                                autoFocus
-                                            />
-                                            <button onClick={handleRecordDividend} className="bg-neon-purple text-white px-4 rounded font-bold hover:bg-neon-purple/80">
-                                                Save
-                                            </button>
-                                        </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-xs text-gray-400 block mb-1">Type</label>
+                                        <select
+                                            className="w-full bg-black/40 border border-grid-border rounded p-2 text-white focus:border-neon-purple outline-none"
+                                            value={editForm.type}
+                                            onChange={e => setEditForm({ ...editForm, type: e.target.value })}
+                                        >
+                                            <option value="Equity">Equity / Stock</option>
+                                            <option value="RealEstate">Real Estate</option>
+                                            <option value="Vehicle">Vehicle</option>
+                                            <option value="Business">Business Interest</option>
+                                        </select>
                                     </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
+                                    <div>
+                                        <label className="text-xs text-gray-400 block mb-1">Current Value</label>
+                                        <input
+                                            type="number"
+                                            className="w-full bg-black/40 border border-grid-border rounded p-2 text-white focus:border-neon-purple outline-none font-mono"
+                                            value={editForm.value}
+                                            onChange={e => setEditForm({ ...editForm, value: Number(e.target.value) })}
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="text-xs text-gray-400 block mb-1">Equity Owned</label>
+                                    <input
+                                        type="number"
+                                        className="w-full bg-black/40 border border-grid-border rounded p-2 text-white focus:border-neon-purple outline-none font-mono"
+                                        value={editForm.equity}
+                                        onChange={e => setEditForm({ ...editForm, equity: Number(e.target.value) })}
+                                    />
+                                </div>
 
-                        <div className="flex-1 overflow-y-auto">
-                            <h3 className="text-xs uppercase tracking-wider text-gray-500 mb-4 font-semibold">Activity Log</h3>
-                            <div className="space-y-4">
-                                {assetHistory.length === 0 ? (
-                                    <p className="text-gray-600 text-sm text-center py-4">No recorded history.</p>
-                                ) : (
-                                    <div className="relative pl-4 border-l border-white/10 space-y-6">
-                                        {assetHistory.map((tx) => (
-                                            <div key={tx.id} className="relative">
-                                                <div className={`absolute -left-[21px] top-1 w-3 h-3 rounded-full border-2 border-black ${tx.type === 'income' ? 'bg-electric-green' : 'bg-grid-border'} `} />
-                                                <div className="text-sm text-gray-300">{tx.category}</div>
-                                                <div className="text-xs text-gray-500 mb-1">{tx.date} • {tx.merchant}</div>
-                                                <div className={`font-mono text-sm ${tx.type === 'income' ? 'text-electric-green' : 'text-white'} `}>
-                                                    {tx.type === 'income' ? '+' : '-'}${tx.amount.toLocaleString()}
+                                <div className="flex gap-3 mt-6">
+                                    <button
+                                        onClick={handleUpdateAsset}
+                                        className="flex-1 bg-neon-purple hover:bg-neon-purple/80 text-white font-bold py-3 rounded-xl transition-colors"
+                                    >
+                                        Save Changes
+                                    </button>
+                                    <button
+                                        onClick={() => setIsEditMode(false)}
+                                        className="flex-1 bg-white/5 hover:bg-white/10 text-gray-300 font-bold py-3 rounded-xl transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+
+                                {/* Delete Button */}
+                                <div className="mt-4 pt-4 border-t border-grid-border">
+                                    {showDeleteConfirm ? (
+                                        <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-xl">
+                                            <p className="text-red-400 text-sm mb-3">Are you sure you want to delete this asset? This action cannot be undone.</p>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={handleDeleteAsset}
+                                                    className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-2 rounded-lg transition-colors"
+                                                >
+                                                    Yes, Delete
+                                                </button>
+                                                <button
+                                                    onClick={() => setShowDeleteConfirm(false)}
+                                                    className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 rounded-lg transition-colors"
+                                                >
+                                                    Cancel
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <button
+                                            onClick={() => setShowDeleteConfirm(true)}
+                                            className="w-full bg-red-500/10 text-red-400 hover:bg-red-500/20 py-2 rounded-lg text-sm font-medium transition-colors"
+                                        >
+                                            Delete Asset
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="mb-6 p-4 bg-white/5 rounded-xl border border-white/10">
+                                    <div className="flex justify-between items-end mb-2">
+                                        <div className="text-sm text-gray-500">Current Valuation</div>
+                                        <div className="text-xs text-electric-green bg-electric-green/10 px-2 py-0.5 rounded">Live</div>
+                                    </div>
+                                    <div className="text-3xl font-mono text-white mb-1">${selectedAsset.value.toLocaleString()}</div>
+                                    {selectedAsset.equity && (
+                                        <div className="text-sm text-gray-400 flex justify-between">
+                                            <span>Equity Owned</span>
+                                            <span className="text-white">${selectedAsset.equity.toLocaleString()}</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3 mb-6">
+                                    <button
+                                        onClick={() => setIsDividendOpen(true)}
+                                        className="bg-electric-green/10 text-electric-green hover:bg-electric-green hover:text-black py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                                    >
+                                        <DollarSign size={16} />
+                                        Record Income
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setEditForm({
+                                                name: selectedAsset.name,
+                                                type: selectedAsset.type,
+                                                value: selectedAsset.value,
+                                                equity: selectedAsset.equity || selectedAsset.value
+                                            });
+                                            setIsEditMode(true);
+                                        }}
+                                        className="bg-neon-purple/10 text-neon-purple hover:bg-neon-purple hover:text-white py-2 rounded-lg text-sm font-medium transition-colors"
+                                    >
+                                        Edit Details
+                                    </button>
+                                </div>
+
+                                <AnimatePresence>
+                                    {isDividendOpen && (
+                                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden mb-6">
+                                            <div className="bg-neon-purple/10 border border-neon-purple/30 p-4 rounded-xl">
+                                                <h4 className="text-white text-sm font-medium mb-3">Record New Income</h4>
+                                                <div className="flex gap-2">
+                                                    <input
+                                                        type="number"
+                                                        placeholder="0.00"
+                                                        className="flex-1 bg-black/40 border border-grid-border rounded px-3 py-2 text-white outline-none focus:border-neon-purple"
+                                                        value={dividendAmount}
+                                                        onChange={e => setDividendAmount(e.target.value)}
+                                                        autoFocus
+                                                    />
+                                                    <button onClick={handleRecordDividend} className="bg-neon-purple text-white px-4 rounded font-bold hover:bg-neon-purple/80">
+                                                        Save
+                                                    </button>
                                                 </div>
                                             </div>
-                                        ))}
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+
+                                <div className="flex-1 overflow-y-auto">
+                                    <h3 className="text-xs uppercase tracking-wider text-gray-500 mb-4 font-semibold">Activity Log</h3>
+                                    <div className="space-y-4">
+                                        {assetHistory.length === 0 ? (
+                                            <p className="text-gray-600 text-sm text-center py-4">No recorded history.</p>
+                                        ) : (
+                                            <div className="relative pl-4 border-l border-white/10 space-y-6">
+                                                {assetHistory.map((tx) => (
+                                                    <div key={tx.id} className="relative">
+                                                        <div className={`absolute -left-[21px] top-1 w-3 h-3 rounded-full border-2 border-black ${tx.type === 'income' ? 'bg-electric-green' : 'bg-grid-border'} `} />
+                                                        <div className="text-sm text-gray-300">{tx.category}</div>
+                                                        <div className="text-xs text-gray-500 mb-1">{tx.date} • {tx.merchant}</div>
+                                                        <div className={`font-mono text-sm ${tx.type === 'income' ? 'text-electric-green' : 'text-white'} `}>
+                                                            {tx.type === 'income' ? '+' : '-'}${tx.amount.toLocaleString()}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
-                                )}
-                            </div>
-                        </div>
+                                </div>
+                            </>
+                        )}
                     </motion.div>
                 )}
             </AnimatePresence>
-
 
             {/* Add Asset Modal */}
             <AnimatePresence>
