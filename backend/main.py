@@ -9,7 +9,7 @@ import os
 # Import routers
 from routers import auth, dashboard, transactions, assets, ai, monitoring, categorization, insurance, upload, email_listener, budgets, export
 # v3.0 routers
-from routers import categories, assets_v3, gov_benefits, reviews
+from routers import categories, assets_v3, gov_benefits, reviews, backup
 
 # Import services
 from services.telegram_service import telegram_service
@@ -82,6 +82,7 @@ app.include_router(categories.router)  # Category management (v3.0)
 app.include_router(assets_v3.router)  # Assets & Liabilities (v3.0)
 app.include_router(gov_benefits.router)  # Government Benefits (v3.0)
 app.include_router(reviews.router)  # Document scanning & review workflow (v3.0)
+app.include_router(backup.router)  # Database backup & export (v3.0)
 
 # Mount static files for uploaded receipts
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
