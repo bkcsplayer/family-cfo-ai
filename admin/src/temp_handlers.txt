@@ -1,0 +1,27 @@
+// Add these handlers after handleAddAccount
+
+const handleDeleteAccount = async (id: number) => {
+    if (!confirm("Are you sure you want to delete this account?")) return;
+    
+    try {
+        await api.deleteAccount(id);
+        const accountsData = await api.getAccounts();
+        setAccounts(accountsData || []);
+    } catch (err) {
+        console.error("Failed to delete account:", err);
+        alert("Failed to delete account");
+    }
+};
+
+const handleDeletePolicy = async (id: number) => {
+    if (!confirm("Are you sure you want to delete this policy?")) return;
+    
+    try {
+        await api.deletePolicy(id);
+        const policiesData = await api.getPolicies();
+        setInsurancePolicies(policiesData || []);
+    } catch (err) {
+        console.error("Failed to delete policy:", err);
+        alert("Failed to delete policy");
+    }
+};

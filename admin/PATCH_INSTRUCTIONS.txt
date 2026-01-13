@@ -1,0 +1,37 @@
+// Add these handlers after line 152 (after handleAddAccount)
+
+const handleDeleteAccount = async (id: number) => {
+    if (!confirm("Delete this account?")) return;
+    try {
+        await api.deleteAccount(id);
+        const accountsData = await api.getAccounts();
+        setAccounts(accountsData || []);
+    } catch (err) {
+        alert("Failed to delete account");
+    }
+};
+
+const handleDeletePolicy = async (id: number) => {
+    if (!confirm("Delete this policy?")) return;
+    try {
+        await api.deletePolicy(id);
+        const policiesData = await api.getPolicies();
+        setInsurancePolicies(policiesData || []);
+    } catch (err) {
+        alert("Failed to delete policy");
+    }
+};
+
+// Then add delete buttons to policy cards (around line 301):
+// Add this after the policy details div (before </BentoBox>):
+<div className="mt-3 pt-3 border-t border-white/5">
+    <button 
+        onClick={() => handleDeletePolicy(policy.id)}
+        className="text-xs px-3 py-1.5 bg-red-500/20 text-red-400 rounded hover:bg-red-500/30 transition-colors"
+    >
+        Delete Policy
+    </button>
+</div>
+
+// For account cards (find the account rendering section around line 320-350):
+// Add similar delete button after account details
